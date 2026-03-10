@@ -2,12 +2,18 @@ import ChatWidget from "./components/ChatWidget";
 
 export default function Home() {
   return (
-    <main className="relative w-full h-screen">
-      <iframe
-        src="/compileit/index.html"
-        className="w-full h-full border-none"
-        title="CompileIT Website"
-      />
+    <main
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100vh",
+        minHeight: "100vh",
+        backgroundImage: "url('/background.webp')",
+        backgroundSize: "cover",
+        backgroundPosition: "top center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
       <ChatWidget />
     </main>
   );
