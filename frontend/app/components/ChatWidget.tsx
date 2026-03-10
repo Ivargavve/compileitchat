@@ -1,20 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+type Message = { role: "user" | "assistant"; content: string };
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
-    setMessages((prev) => [...prev, { role: "user", content: input }]);
+    const userMessage: Message = { role: "user", content: input };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput("");
+    setIsLoading(true);
 
-    // TODO: Send to backend and get response
+    try {
+      // Send full history so backend stays stateless
+      const response = await fetch(`${API_URL}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages }),
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch");
+
+      // ReadableStream lets us append tokens as they arrive
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No reader");
+
+      const decoder = new TextDecoder();
+      let assistantContent = "";
+
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        assistantContent += chunk;
+
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: assistantContent,
+          };
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Ett fel uppstod. Försök igen." },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -36,21 +92,22 @@ export default function ChatWidget() {
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && (
               <p className="text-gray-500 text-center mt-8">
-                Hej! Hur kan jag hjälpa dig?
+                Hej! Ställ en fråga om CompileIT.
               </p>
             )}
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`max-w-[80%] px-4 py-2 rounded-2xl ${
+                className={`max-w-[85%] px-4 py-2 rounded-2xl whitespace-pre-wrap ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white ml-auto"
                     : "bg-gray-100 text-gray-800"
                 }`}
               >
-                {msg.content}
+                {msg.content || (isLoading && i === messages.length - 1 && "...")}
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
 
           <form onSubmit={handleSubmit} className="p-3 border-t border-gray-200">
@@ -60,11 +117,13 @@ export default function ChatWidget() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Skriv ett meddelande..."
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500"
+                disabled={isLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 disabled:bg-gray-50"
               />
               <button
                 type="submit"
-                className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                disabled={isLoading}
+                className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
