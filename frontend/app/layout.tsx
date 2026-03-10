@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CompileIT Chat",
+  title: "compileitchat",
   description: "AI-powered chat assistant for CompileIT",
 };
 

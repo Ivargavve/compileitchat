@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="CompileIT Chat API")
+app = FastAPI(title="compileitchat API")
 
 app.add_middleware(
     CORSMiddleware,

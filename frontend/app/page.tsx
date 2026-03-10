@@ -1,3 +1,5 @@
+import ChatWidget from "./components/ChatWidget";
+
 export default function Home() {
   return (
     <main className="relative w-full h-screen">
@@ -6,6 +8,7 @@ export default function Home() {
         className="w-full h-full border-none"
         title="CompileIT Website"
       />
+      <ChatWidget />
     </main>
   );
 }
