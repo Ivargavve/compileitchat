@@ -22,7 +22,9 @@ const styles: Record<string, CSSProperties> = {
     boxShadow:
       "0 0 0 1px rgba(0,0,0,0.08), 0 4px 6px -1px rgba(0,0,0,0.1), 0 10px 15px -3px rgba(0,0,0,0.1)",
     width: 400,
+    maxWidth: "calc(100vw - 40px)",
     height: 550,
+    maxHeight: "calc(100vh - 40px)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -225,6 +227,7 @@ export default function ChatWidget() {
   const [inputFocused, setInputFocused] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -235,6 +238,17 @@ export default function ChatWidget() {
       inputRef.current?.focus();
     }
   }, [isLoading, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (widgetRef.current && !widgetRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,8 +274,7 @@ export default function ChatWidget() {
 
       const decoder = new TextDecoder();
       let assistantContent = "";
-
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      let messageAdded = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -270,14 +283,19 @@ export default function ChatWidget() {
         const chunk = decoder.decode(value);
         assistantContent += chunk;
 
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            role: "assistant",
-            content: assistantContent,
-          };
-          return updated;
-        });
+        if (!messageAdded) {
+          setMessages((prev) => [...prev, { role: "assistant", content: assistantContent }]);
+          messageAdded = true;
+        } else {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              role: "assistant",
+              content: assistantContent,
+            };
+            return updated;
+          });
+        }
       }
     } catch (error) {
       console.error("Chat error:", error);
@@ -293,7 +311,7 @@ export default function ChatWidget() {
   return (
     <div style={styles.container}>
       {isOpen ? (
-        <div style={styles.widget}>
+        <div ref={widgetRef} style={styles.widget}>
           <div style={styles.header}>
             <div style={styles.headerLeft}>
               <div style={styles.avatar}>C</div>
@@ -387,13 +405,29 @@ export default function ChatWidget() {
                         >
                           {msg.content}
                         </Streamdown>
-                      ) : (
-                        isLoading && i === messages.length - 1 && "..."
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 )
               )
+            )}
+            {isLoading && messages.length > 0 && messages[messages.length - 1].role === "user" && (
+              <div style={styles.messageRow}>
+                <div style={styles.messageAvatar}>C</div>
+                <div style={styles.assistantMessage}>
+                  <span style={{ display: "inline-flex", gap: 3, alignItems: "center" }}>
+                    <span style={{ width: 6, height: 6, backgroundColor: "#71717a", animation: "pulse 1.4s infinite", animationDelay: "0s" }} />
+                    <span style={{ width: 6, height: 6, backgroundColor: "#71717a", animation: "pulse 1.4s infinite", animationDelay: "0.2s" }} />
+                    <span style={{ width: 6, height: 6, backgroundColor: "#71717a", animation: "pulse 1.4s infinite", animationDelay: "0.4s" }} />
+                  </span>
+                  <style>{`
+                    @keyframes pulse {
+                      0%, 80%, 100% { opacity: 0.3; }
+                      40% { opacity: 1; }
+                    }
+                  `}</style>
+                </div>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>
