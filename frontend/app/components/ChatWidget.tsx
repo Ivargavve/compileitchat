@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, CSSProperties } from "react";
+import { Streamdown } from "streamdown";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -235,43 +236,6 @@ export default function ChatWidget() {
     }
   }, [isLoading, isOpen]);
 
-  const renderMessageContent = (content: string) => {
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-    const parts: (string | JSX.Element)[] = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = linkRegex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(content.slice(lastIndex, match.index));
-      }
-      parts.push(
-        <a
-          key={match.index}
-          href={match[2]}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "#2563eb",
-            fontWeight: 500,
-            textDecoration: "underline",
-            textUnderlineOffset: "3px",
-            cursor: "pointer",
-          }}
-        >
-          {match[1]}
-        </a>
-      );
-      lastIndex = match.index + match[0].length;
-    }
-
-    if (lastIndex < content.length) {
-      parts.push(content.slice(lastIndex));
-    }
-
-    return parts.length > 0 ? parts : content;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -401,9 +365,31 @@ export default function ChatWidget() {
                   <div key={i} style={styles.messageRow}>
                     <div style={styles.messageAvatar}>C</div>
                     <div style={styles.assistantMessage}>
-                      {msg.content
-                        ? renderMessageContent(msg.content)
-                        : isLoading && i === messages.length - 1 && "..."}
+                      {msg.content ? (
+                        <Streamdown
+                          linkSafety={{ enabled: false }}
+                          components={{
+                            a: ({ href, children }) => (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: "#18181b",
+                                  textDecoration: "underline",
+                                  textUnderlineOffset: "2px",
+                                }}
+                              >
+                                {children}
+                              </a>
+                            ),
+                          }}
+                        >
+                          {msg.content}
+                        </Streamdown>
+                      ) : (
+                        isLoading && i === messages.length - 1 && "..."
+                      )}
                     </div>
                   </div>
                 )
